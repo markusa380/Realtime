@@ -14,11 +14,14 @@ namespace Realtime
         public static RealtimeConfig Instance { get; private set; }
 
         private static readonly string BASE_TIME_NODE = "baseTime";
+        private static readonly string USE_LOCAL_TIME_NODE = "useLocalTime";
         private static readonly string UNSET_VALUE = "UNSET";
 
-        public DateTime? baseTime = null;
+        public DateTimeOffset? baseTime = null;
+        public bool useLocalTime = false;
 
-        public RealtimeConfig() : base()
+        public RealtimeConfig()
+            : base()
         {
             Instance = this;
         }
@@ -29,7 +32,6 @@ namespace Realtime
 
             if (node.HasValue(BASE_TIME_NODE))
             {
-
                 var value = node.GetValue(BASE_TIME_NODE);
 
                 if (value == UNSET_VALUE)
@@ -38,18 +40,36 @@ namespace Realtime
                 }
                 else
                 {
-                    try { 
+                    try
+                    {
                         baseTime = DateTimeUtil.FromISO8601(value);
                     }
                     catch (Exception e)
                     {
-                        Logging.Warn("Failed to parse baseTime " + value + ": " + e.Message);
+                        Logging.Warn($"Failed to parse {BASE_TIME_NODE} {value}: {e.Message}");
                     }
                 }
             }
             else
             {
-                Debug.LogWarning("BaseTimeSeconds not found in config");
+                Debug.LogWarning($"{BASE_TIME_NODE} not found in config");
+            }
+
+            if (node.HasValue(USE_LOCAL_TIME_NODE))
+            {
+                var value = node.GetValue(USE_LOCAL_TIME_NODE);
+                try
+                {
+                    useLocalTime = bool.Parse(value);
+                }
+                catch (Exception e)
+                {
+                    Logging.Warn($"Failed to parse {USE_LOCAL_TIME_NODE} {value}: {e.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"{USE_LOCAL_TIME_NODE} not found in config");
             }
         }
 
@@ -64,6 +84,8 @@ namespace Realtime
             {
                 node.AddValue(BASE_TIME_NODE, UNSET_VALUE);
             }
+
+            node.AddValue(USE_LOCAL_TIME_NODE, useLocalTime);
         }
     }
 }

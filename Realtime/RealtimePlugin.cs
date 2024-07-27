@@ -19,7 +19,7 @@ namespace Realtime
 
         private static readonly double MAX_OFFSET_ERROR_SECONDS = 10.0;
         private static readonly double LOAD_GRACE_PERIOD_SECONDS = 3.0;
-        private static readonly double CATCHUP_DURATION_SECONDS = 1.0;
+        private static readonly double CATCHUP_DURATION_SECONDS = 0.2;
 
         private PluginState state = PluginState.INIT;
         private float startTime;
@@ -28,11 +28,18 @@ namespace Realtime
         {
             startTime = Time.time;
             Instance = this;
+            KSPUtil.dateTimeFormatter = new RealtimeFormatter();
         }
 
         public void Update()
         {
+            if (FlightDriver.Pause)
+            {
+                return;
+            }
+
             PluginState oldState = state;
+
             double offsetToRealtime;
             switch (state)
             {
@@ -105,25 +112,29 @@ namespace Realtime
 
             if (oldState != state)
             {
-                Logging.Info("State transition: " + oldState + " -> " + state);
+                Logging.Info($"State transition: {oldState} -> {state}");
             }
         }
 
         public void Reset()
         {
             Logging.Info("Resetting plugin");
-            StopWarp();
-            state = PluginState.INIT;
+            if (state != PluginState.INIT)
+            {
+                StopWarp();
+                state = PluginState.INIT;
+            }
         }
 
         private double GetOffsetToRealtimeSeconds()
         {
             var baseTime = RealtimeConfig.Instance.baseTime.Value;
             var inGameTime = baseTime.AddSeconds(Planetarium.GetUniversalTime());
-            return inGameTime.Subtract(DateTime.UtcNow).TotalSeconds;
+            return inGameTime.Subtract(DateTimeOffset.UtcNow).TotalSeconds;
         }
 
-        private static readonly GameScenes[] ALLOWED_SCENES = new GameScenes[] {
+        private static readonly GameScenes[] ALLOWED_SCENES = new GameScenes[]
+        {
             GameScenes.FLIGHT,
             GameScenes.TRACKSTATION,
             GameScenes.SPACECENTER
@@ -136,13 +147,15 @@ namespace Realtime
 
         private void WarnAhead(double diff)
         {
-            var message = string.Format("Your in game time is ahead of real time by {0} seconds!", Math.Ceiling(diff));
+            var deltaStr = KSPUtil.dateTimeFormatter.PrintDateDelta(diff, true, true, true);
+            var message = $"Your in game time is ahead of real time by {deltaStr}!";
             PostScreenMessage(message);
         }
 
         private void InfoBehind(double diff)
         {
-            var message = string.Format("Your in game time is behind real time by {0} seconds, warping ahead!", Math.Ceiling(diff));
+            var deltaStr = KSPUtil.dateTimeFormatter.PrintDateDelta(diff, true, true, true);
+            var message = $"Your in game time is behind real time by {deltaStr}, warping ahead!";
             PostScreenMessage(message);
         }
 
@@ -166,7 +179,9 @@ namespace Realtime
 
         private void PostScreenMessage(string message)
         {
-            ScreenMessages.PostScreenMessage(new ScreenMessage(message, 3f, ScreenMessageStyle.UPPER_CENTER));
+            ScreenMessages.PostScreenMessage(
+                new ScreenMessage(message, 3f, ScreenMessageStyle.UPPER_CENTER)
+            );
         }
 
         private void WarpAhead(double offsetToRealtime)

@@ -1,17 +1,19 @@
-﻿using KSP.UI.Screens;
-using System;
+﻿using System;
+using KSP.UI.Screens;
 using UnityEngine;
+using static DatabaseLoaderModel_DAE;
 using static KSP.UI.Screens.ApplicationLauncher;
 
 namespace Realtime
 {
     [KSPAddon(KSPAddon.Startup.SpaceCentre, false)]
-    internal class RealtimeInterface: MonoBehaviour
+    internal class RealtimeInterface : MonoBehaviour
     {
         public static RealtimeInterface Instance { get; private set; }
 
         // false when entire UI is hidden by pressing F2
         private bool visible = true;
+
         // true when the window is opened from the toolbar
         private bool open = false;
 
@@ -45,12 +47,7 @@ namespace Realtime
         {
             if (IsShown())
             {
-                rect = GUILayout.Window(
-                    mainGuid,
-                    rect,
-                    WindowFunction,
-                    "Realtime"
-                );
+                rect = GUILayout.Window(mainGuid, rect, WindowFunction, "Realtime");
             }
         }
 
@@ -61,7 +58,13 @@ namespace Realtime
             GUILayout.BeginVertical();
             if (RealtimeConfig.Instance.baseTime.HasValue)
             {
-                GUILayout.Label("Base time: " + DateTimeUtil.ToISO8601(RealtimeConfig.Instance.baseTime.Value));
+                var baseTime = RealtimeConfig.Instance.baseTime.Value;
+                var baseTimeLocalized = DateTimeUtil.Localize(
+                    baseTime,
+                    RealtimeConfig.Instance.useLocalTime
+                );
+                var baseTimeStr = DateTimeUtil.ToHumanReadable(baseTimeLocalized);
+                GUILayout.Label($"Base time: {baseTimeStr}");
             }
             else
             {
@@ -69,10 +72,10 @@ namespace Realtime
             }
 
             configuredTimeStr = GUILayout.TextField(configuredTimeStr);
-            DateTime? time = null;
+            DateTimeOffset? time = null;
             try
             {
-                time = DateTimeUtil.FromISO8601(configuredTimeStr);
+                time = DateTimeUtil.FromHumanReadable(configuredTimeStr);
             }
             catch (FormatException)
             {
@@ -107,6 +110,14 @@ namespace Realtime
             }
             GUILayout.EndHorizontal();
 
+            var useLocalTimeLabel = RealtimeConfig.Instance.useLocalTime
+                ? "Use Local time"
+                : "Use UTC";
+            if (GUILayout.Button(useLocalTimeLabel))
+            {
+                RealtimeConfig.Instance.useLocalTime = !RealtimeConfig.Instance.useLocalTime;
+                RefreshConfiguredTimeStr();
+            }
             GUILayout.EndVertical();
 
             GUI.DragWindow();
@@ -116,14 +127,27 @@ namespace Realtime
         {
             open = true;
 
+            RefreshConfiguredTimeStr();
+        }
+
+        private void RefreshConfiguredTimeStr()
+        {
+            DateTimeOffset configuredTime;
             if (RealtimeConfig.Instance.baseTime.HasValue)
             {
-                configuredTimeStr = DateTimeUtil.ToISO8601(RealtimeConfig.Instance.baseTime.Value);
+                configuredTime = RealtimeConfig.Instance.baseTime.Value;
             }
             else
             {
-                configuredTimeStr = DateTimeUtil.ToISO8601(DateTime.UtcNow);
+                configuredTime = DateTime.UtcNow;
             }
+
+            var configuredTimeLocalized = DateTimeUtil.Localize(
+                configuredTime,
+                RealtimeConfig.Instance.useLocalTime
+            );
+
+            configuredTimeStr = DateTimeUtil.ToHumanReadable(configuredTimeLocalized);
         }
 
         private void OnClose()
