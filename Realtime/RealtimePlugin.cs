@@ -74,12 +74,6 @@ namespace Realtime
                         StopWarp();
                     }
 
-                    if (RealtimeInterface.Instance != null && RealtimeInterface.Instance.IsShown())
-                    {
-                        // Don't transition states if the interface is open
-                        break;
-                    }
-
                     offsetToRealtime = GetOffsetToRealtimeSeconds();
 
                     if (offsetToRealtime > MAX_OFFSET_ERROR_SECONDS)

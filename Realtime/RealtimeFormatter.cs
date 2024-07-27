@@ -1,7 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Realtime
@@ -13,13 +10,13 @@ namespace Realtime
 
         private readonly HashSet<string> seenInvocations = new HashSet<string>();
 
-        public int Minute => 60;
+        public int Minute => IsEnabled() ? 60 : defaultFormatter.Minute;
 
-        public int Hour => Minute * 60;
+        public int Hour => IsEnabled() ? Minute * 60 : defaultFormatter.Hour;
 
-        public int Day => Hour * 24;
+        public int Day => IsEnabled() ? Hour * 24 : defaultFormatter.Day;
 
-        public int Year => Day * 365;
+        public int Year => IsEnabled() ? Day * 365 : defaultFormatter.Year;
 
         public string PrintDate(double time, bool includeTime, bool includeSeconds = false)
         {

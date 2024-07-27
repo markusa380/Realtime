@@ -1,7 +1,6 @@
 ﻿using System;
 using KSP.UI.Screens;
 using UnityEngine;
-using static DatabaseLoaderModel_DAE;
 using static KSP.UI.Screens.ApplicationLauncher;
 
 namespace Realtime
@@ -25,6 +24,7 @@ namespace Realtime
         {
             GameEvents.onShowUI.Add(OnShowUI);
             GameEvents.onHideUI.Add(OnHideUI);
+            Texture icon = GameDatabase.Instance.GetTexture("Realtime/Textures/icon", false);
             toolbarButton = ApplicationLauncher.Instance.AddModApplication(
                 OnOpen,
                 OnClose,
@@ -33,12 +33,12 @@ namespace Realtime
                 null,
                 null,
                 AppScenes.SPACECENTER,
-                new Texture2D(36, 36)
+                icon
             );
             Instance = this;
         }
 
-        public bool IsShown()
+        private bool IsShown()
         {
             return visible && open;
         }
@@ -56,6 +56,8 @@ namespace Realtime
         private void WindowFunction(int windowID)
         {
             GUILayout.BeginVertical();
+            GUILayout.Label("Base time:");
+            var baseTimeStr = "Not set";
             if (RealtimeConfig.Instance.baseTime.HasValue)
             {
                 var baseTime = RealtimeConfig.Instance.baseTime.Value;
@@ -63,27 +65,26 @@ namespace Realtime
                     baseTime,
                     RealtimeConfig.Instance.useLocalTime
                 );
-                var baseTimeStr = DateTimeUtil.ToHumanReadable(baseTimeLocalized);
-                GUILayout.Label($"Base time: {baseTimeStr}");
+                baseTimeStr = DateTimeUtil.ToHumanReadable(baseTimeLocalized);
             }
-            else
-            {
-                GUILayout.Label("Base time not set");
-            }
+            GUILayout.Label(baseTimeStr);
 
             configuredTimeStr = GUILayout.TextField(configuredTimeStr);
             DateTimeOffset? time = null;
+            string error = "";
             try
             {
                 time = DateTimeUtil.FromHumanReadable(configuredTimeStr);
             }
             catch (FormatException)
             {
-                var color = GUI.color;
-                GUI.color = Color.red;
-                GUILayout.Label("Invalid date format!");
-                GUI.color = color;
+                error = "Invalid date format!";
             }
+
+            var color = GUI.color;
+            GUI.color = Color.red;
+            GUILayout.Label(error);
+            GUI.color = color;
 
             GUILayout.BeginHorizontal();
             if (time == null)
@@ -101,7 +102,12 @@ namespace Realtime
             GUI.enabled = true;
             if (GUILayout.Button("Now"))
             {
-                RealtimeConfig.Instance.baseTime = DateTime.UtcNow;
+                var configuredTimeLocalized = DateTimeUtil.Localize(
+                    DateTimeOffset.Now,
+                    RealtimeConfig.Instance.useLocalTime
+                );
+
+                configuredTimeStr = DateTimeUtil.ToHumanReadable(configuredTimeLocalized);
             }
             if (GUILayout.Button("Unset"))
             {
